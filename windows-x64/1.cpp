@@ -12,13 +12,15 @@ using namespace std;
 
 struct compiler
 {
-    string version = "v3.0 windows x64";
+    string version = "windows x64 v1";
     string path = ".\\";
+    bool deleteMiddle = 0;
+    bool deleteOutput = 0;
 
     string code = "";
     uint size = 0;
     bool useful = 0;
-    uint bal = 0;
+    uint balance = 0;
     uint indent = 0;
 
     bool onlyMiddle = 0;
@@ -36,25 +38,19 @@ struct compiler
     }
 
     void parse(int argc, char** argv) {
-        argagg::parser_results args;
-
         argagg::parser args_parser{{
             {"help", {"-h", "--help"}, "show this help", 0},
             {"version", {"-v", "--version"}, "show version", 0},
             {"dir", {"-d", "--dir"}, "show this compiler dir", 0},
             {"input", {"-i", "--input"}, "input file path", 1},
             {"output", {"-o", "--output"}, "output file path", 1},
-            {"cells", {"-c", "--cells"}, "memory cells count", 1},
+            {"cells", {"-s", "--size", "--cells"}, "memory cells count", 1},
             {"echo", {"-e", "--echo"}, "echo input char", 0},
-            {"midfile", {"-m", "--middle"}, "only in middle file", 0}
+            {"middfile", {"-c", "--middle"}, "only in middle C file", 0}
         }};
-
-        try {
-            args = args_parser.parse(argc, argv);
-        }
-        catch (...) {
-            throw "arguments\n";
-        }
+        argagg::parser_results args;
+        try { args = args_parser.parse(argc, argv); }
+        catch (...) { throw "arguments\n"; }
 
         path = filesystem::path(getExeDir()).parent_path().string();
 
@@ -64,43 +60,19 @@ struct compiler
             cout << args_parser;
             throw "";
         }
-
-        if (args.has_option("dir")) {
-            cout << path << '\n';
-        }
-
-        if (args.has_option("version")) {
-            cout << version << '\n';
-        }
-
-        if (args.has_option("help")) {
-            cout << args_parser;
-        }
-
+        if (args.has_option("dir")) cout << path << '\n';
+        if (args.has_option("version")) cout << version << '\n';
+        if (args.has_option("help")) cout << args_parser;
         if (args.has_option("cells")) {
             cells = atoi(args["cells"].as<string>("30000").c_str());
             if (cells <= 0) throw "bad cells\n";
         }
-
-        if (args.has_option("echo")) {
-            echo = 1;
-        }
-
-        if (args.has_option("midfile")) {
-            onlyMiddle = 1;
-        }
-
-        if (args.has_option("output")) {
-            output = args["output"].as<string>("a.exe");
-        }
-
-        if (args.has_option("input")) {
-            input = args["input"].as<string>("");
-        }
+        if (args.has_option("echo")) echo = 1;
+        if (args.has_option("middfile")) onlyMiddle = 1;
+        if (args.has_option("output")) output = args["output"].as<string>("a.exe");
+        if (args.has_option("input")) input = args["input"].as<string>("");
         else {
-            if (args.pos.empty())
-                throw ((args.has_option("dir") || args.has_option("help") || args.has_option("version")) && (!args.has_option("output")))
-                ? "" : "no input file\n";
+            if (args.pos.empty()) throw (args.has_option("dir") || args.has_option("help") || args.has_option("version")) ? "" : "no input file\n";
             else for (const char* arg : args.pos) input = string(arg);
         }
     }
@@ -108,20 +80,20 @@ struct compiler
 
     bool clean() {
         bool change = 0;
-        string bcode = code;
+        string rcode = code;
         code = "";
 
         uint i = 0;
         while (i < size) {
-            if (bcode[i] == '+' || bcode[i] == '-') {
+            if (rcode[i] == '+' || rcode[i] == '-') {
                 uint s = i;
                 int count = 0;
-                while (i < size && (bcode[i] == '+' || bcode[i] == '-' || (i + 2 < size ? (bcode[i] == '[' && (bcode[i+1] == '+' || bcode[i+1] == '-') && bcode[i+2] == ']') : 0))) {
-                    if (bcode[i] == '+') count++;
-                    else if (bcode[i] == '-') count--;
-                    else if (i + 2 < size ? (bcode[i] == '[' && (bcode[i+1] == '+' || bcode[i+1] == '-') && bcode[i+2] == ']') : 0) {
+                while (i < size && (rcode[i] == '+' || rcode[i] == '-' || (i + 2 < size ? (rcode[i] == '[' && (rcode[i+1] == '+' || rcode[i+1] == '-') && rcode[i+2] == ']') : 0))) {
+                    if (rcode[i] == '+') count++;
+                    else if (rcode[i] == '-') count--;
+                    else if (i + 2 < size ? (rcode[i] == '[' && (rcode[i+1] == '+' || rcode[i+1] == '-') && rcode[i+2] == ']') : 0) {
                         uint si = i;
-                        while (i + 2 < size ? (bcode[i] == '[' && (bcode[i+1] == '+' || bcode[i+1] == '-') && bcode[i+2] == ']') : 0) i += 3;
+                        while (i + 2 < size ? (rcode[i] == '[' && (rcode[i+1] == '+' || rcode[i+1] == '-') && rcode[i+2] == ']') : 0) i += 3;
                         count = 0;
                         code += "[-]";
                         change = 1;
@@ -133,14 +105,14 @@ struct compiler
                 if (count > 0) opt = string((int)((unsigned char)count), '+');
                 else if (count < 0) opt = string((int)((unsigned char)(-count)), '-');
                 code += opt;
-                if (bcode.substr(s, i-s) != opt) change = 1;
+                if (rcode.substr(s, i-s) != opt) change = 1;
             }
 
-            else if (bcode[i] == '>' || bcode[i] == '<') {
+            else if (rcode[i] == '>' || rcode[i] == '<') {
                 uint s = i;
                 int count = 0;
-                while (i < size && (bcode[i] == '>' || bcode[i] == '<')) {
-                    if (bcode[i] == '>') count++;
+                while (i < size && (rcode[i] == '>' || rcode[i] == '<')) {
+                    if (rcode[i] == '>') count++;
                     else count--;
                     i++;
                 }
@@ -148,22 +120,21 @@ struct compiler
                 if (count > 0) opt = string((int)((unsigned char)count), '>');
                 else if (count < 0) opt = string((int)((unsigned char)(-count)), '<');
                 code += opt;
-                if (bcode.substr(s, i-s) != opt) change = 1;
+                if (rcode.substr(s, i-s) != opt) change = 1;
             }
 
-            else if (i + 2 < size && (bcode[i] == '[' && (bcode[i+1] == '+' || bcode[i+1] == '-') && bcode[i+2] == ']')) {
+            else if (i + 2 < size && (rcode[i] == '[' && (rcode[i+1] == '+' || rcode[i+1] == '-') && rcode[i+2] == ']')) {
                 uint s = i;
-                while (i + 2 < size && (bcode[i] == '[' && (bcode[i+1] == '+' || bcode[i+1] == '-') && bcode[i+2] == ']')) i += 3;
+                while (i + 2 < size && (rcode[i] == '[' && (rcode[i+1] == '+' || rcode[i+1] == '-') && rcode[i+2] == ']')) i += 3;
                 code += "[-]";
                 if (s + 3 != i) change = 1;
             }
 
             else {
-                code += bcode[i];
+                code += rcode[i];
                 i++;
             }
         }
-
         size = code.length();
 
         return change;
@@ -180,14 +151,14 @@ struct compiler
             if (ch == '+' || ch == '-' || ch == '>' || ch == '<' || ch == '.' || ch == ',' || ch == '[' || ch == ']') {
                 code += ch;
                 if (ch == '.' || ch == ',') useful = 1;
-                if (ch == '[') bal++;
+                if (ch == '[') balance++;
                 else if (ch == ']') {
-                    bal--;
-                    if (bal < 0) throw "unmatched ]\n";
+                    balance--;
+                    if (balance < 0) throw "unmatched ]\n";
                 }
             }
         }
-        if (bal > 0) throw "unmatched [\n";
+        if (balance > 0) throw "unmatched [\n";
 
         size = code.length();
 
@@ -196,9 +167,13 @@ struct compiler
 
 
     void link() {
-        string cmd = path + "\\cc64.exe -I" + path + " -L" + path + ' ' + middle + " -o " + output;
+        string cmd = path + "\\cc64.exe -I" + path + " -L" + path + ' ' + middle + " -o " + output + " 2>nul";
 
-        if (system(cmd.c_str()) != 0) throw "link fail\n";
+        if (system(cmd.c_str()) != 0) {
+            deleteMiddle = 1;
+            deleteOutput = 1;
+            throw "link fail\n";
+        }
         filesystem::remove(middle);
     }
 
@@ -206,7 +181,10 @@ struct compiler
     void compile() {
         if (!onlyMiddle) middle = path + '\\' + middle;
         ofstream file(middle.c_str());
-        if (!file.is_open()) throw "cant create middle file\n";
+        if (!file.is_open()) {
+            deleteMiddle = 1;
+            throw "cant create middle file\n";
+        }
 
         file << "#include <conio.h>\n\n";
         file << "#define MC " << cells << "\n\n\n";
@@ -302,18 +280,18 @@ struct compiler
 
 
 int main(int argc, char** argv) {
-    compiler bfc;
+    compiler bf;
 
     try {
-        bfc.parse(argc, argv);
-        bfc.read();
-        while (bfc.clean());
-        bfc.compile();
-        if (!bfc.onlyMiddle) bfc.link();
+        bf.parse(argc, argv);
+        bf.read();
+        while (bf.clean());
+        bf.compile();
+        if (!bf.onlyMiddle) bf.link();
     }
     catch (const char* msg) {
-        if (filesystem::exists(bfc.middle)) filesystem::remove(bfc.middle);
-        if (filesystem::exists(bfc.output)) filesystem::remove(bfc.output);
+        if (filesystem::exists(bf.middle) && bf.deleteMiddle) filesystem::remove(bf.middle);
+        if (filesystem::exists(bf.output) && bf.deleteOutput) filesystem::remove(bf.output);
         cout << msg;
         return 1;
     }
