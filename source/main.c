@@ -40,7 +40,7 @@ struct brainfuck {
     size_t osize;
     size_t ocap;
     uint64_t ostring;
-    const char **ofiles;
+    char **ofiles;
     size_t ofsize;
     size_t size;
     uint8_t optim;
@@ -85,7 +85,12 @@ void bf_clear_output_code(struct brainfuck *bf) {
 
 void bf_clear_output_files(struct brainfuck *bf) {
     if (bf == 0) bf_error(bf_error_null);
-    if (bf->ofiles != 0) free(bf->ofiles);
+    if (bf->ofiles != 0) {
+        for (uint64_t i = 0; i < bf->ofsize; i++) {
+            if (bf->ofiles[i] != 0) free(bf->ofiles[i]);
+        }
+        free(bf->ofiles);
+    }
     bf->ofiles = 0;
     bf->ofsize = 0;
 }
@@ -162,7 +167,7 @@ void bf_output_grow(struct brainfuck *bf, size_t size) {
 
 void bf_file_grow(struct brainfuck *bf) {
     if (bf == 0) bf_error(bf_error_null);
-    grow((void**)&bf->ofiles, bf->ofsize, &bf->ofsize, 1, sizeof(const char*));
+    grow((void**)&bf->ofiles, bf->ofsize, &bf->ofsize, 1, sizeof(char*));
 }
 
 void bf_append_input_string(struct brainfuck *bf, const char *str) {
@@ -206,8 +211,15 @@ void bf_append_output_int(struct brainfuck *bf, int64_t num) {
 
 void bf_append_output_file(struct brainfuck *bf, const char *path) {
     if (bf == 0) bf_error(bf_error_null);
+    if (path == 0) bf_error(bf_error_file);
+    size_t size = strlen(path);
+    if (size == 0) bf_error(bf_error_file);
     bf_file_grow(bf);
-    ((const char**)(bf->ofiles))[bf->ofsize] = path;
+    char *data = (char*)malloc(size + 1);
+    if (data == 0) bf_error(bf_error_alloc);
+    memcpy((void*)data, (void*)path, size);
+    data[size] = 0;
+    bf->ofiles[bf->ofsize] = data;
     bf->ofsize++;
 }
 
@@ -240,14 +252,14 @@ void bf_flash(struct brainfuck *bf) {
     if (bf == 0) bf_error(bf_error_null);
     if (bf->interp_only == true) {
         bf_run(bf);
-        bf_clear_input_code(bf);
+        bf_clear(bf);
         exit(0);
     }
     if ((bf->ostring == 0) && (bf->ofsize == 0)) {
         if (bf->ocode != 0) printf("%s\n", bf->ocode);
     }
     for (uint64_t i = 0; i < bf->ofsize; i++) {
-        FILE *file = fopen(((const char**)bf->ofiles)[i], "wb");
+        FILE *file = fopen(bf->ofiles[i], "wb");
         if (file == 0) bf_error(bf_error_file);
         fseek(file, 0, 0);
         if (bf->ocode != 0) fwrite(bf->ocode, bf->osize, 1, file);
