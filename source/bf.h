@@ -1,5 +1,5 @@
-#ifndef __bf_compiler__
-#define __bf_compiler__ 1
+#ifndef __bf__
+#define __bf__ 1
 
 #include <stdbool.h>
 #include <stdint.h>
