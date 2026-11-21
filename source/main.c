@@ -6,7 +6,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "bfc.h"
+#include "bf.h"
 
 bool arg_is_input(char *arg) {
     return (
