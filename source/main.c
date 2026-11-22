@@ -808,6 +808,21 @@ size_t args_parse(struct brainfuck *bf, int argc, char **argv) {
             }
             else bf_let_optim(bf, 0);
         }
+        else if (arg_is_optim0(argv[i])) {
+            bf_let_optim(bf, 0);
+        }
+        else if (arg_is_optim1(argv[i])) {
+            bf_let_optim(bf, 1);
+        }
+        else if (arg_is_optim2(argv[i])) {
+            bf_let_optim(bf, 2);
+        }
+        else if (arg_is_optim3(argv[i])) {
+            bf_let_optim(bf, 3);
+        }
+        else if (arg_is_optim4(argv[i])) {
+            bf_let_optim(bf, 4);
+        }
         else if (arg_is_run(argv[i])) {
             bf_interp(bf);
         }
