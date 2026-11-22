@@ -356,12 +356,12 @@ void bf_compile_start(struct brainfuck *bf) {
     if (bf->size == 0) {
         bf_append_output_string(bf, "void i(){int c;while((c=getchar())!=EOF&&c!=10);}");
     }
-    if (bf->size == 1) {
+    else if (bf->size == 1) {
         bf_append_output_string(bf, "static unsigned char t[1];void i(){int c;while((c=getchar())!=EOF&&c!=10);*t=0;}");
     } else {
         bf_append_output_string(bf, "#define s ");
         bf_append_output_int(bf, bf->size);
-        bf_append_output_string(bf, "\nstatic unsigned long long p=s/2;static unsigned char t[s];void i(){unsigned long long u=s/2;int c;while((c=getchar())!=EOF&&c!=10){t[u]=(unsigned char)c;u=(u+1)%s;}t[u]=0;}");
+        bf_append_output_string(bf, "\nstatic unsigned long long p=s/2;static unsigned char t[s];void i(){unsigned long long u=p;int c;while((c=getchar())!=EOF&&c!=10){t[u]=(unsigned char)c;u=(u+1)%s;}t[u]=0;}");
     }
     bf_append_output_string(bf, "int main(){");
 }
