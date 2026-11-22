@@ -246,29 +246,179 @@ void bf_append_output_file(struct brainfuck *bf, const char *path) {
     bf->ofsize++;
 }
 
-void bf_io_input_s0(uint8_t *buf, uint64_t offset, uint64_t size) {
+void bf_io_input_s0() {
     int chr;
     while ((chr = getchar()) != EOF && chr != 10);
 }
 
-void bf_io_input_s1(uint8_t *buf, uint64_t offset, uint64_t size) {
+void bf_io_input_s1(uint8_t *buf) {
     int chr;
     while ((chr = getchar()) != EOF && chr != 10);
     buf[0] = 0;
 }
 
 void bf_io_input(uint8_t *buf, uint64_t offset, uint64_t size) {
-    uint64_t ptr = offset % size;
     int chr;
     while ((chr = getchar()) != EOF && chr != 10) {
-        buf[ptr] = (uint8_t)chr;
-        ptr = (ptr + 1) % size;
+        buf[offset] = (uint8_t)chr;
+        offset = (offset + 1) % size;
     }
-    buf[ptr] = 0;
+    buf[offset] = 0;
 }
 
 void bf_run(struct brainfuck *bf) {
     if (bf == 0) bf_error_null();
+    if (bf->size == 0) {
+        const char *r = bf->icode;
+        uint64_t c = 0;
+        uint64_t l = 1;
+        uint64_t lc = 0;
+        uint64_t ll = 0;
+        int64_t level = 0;
+        while (*r) {
+            if (*r == '\n') {
+                c = 0;
+                l++;
+            } else c++;
+            if ((*r == '.') && (level == 0)) putchar(0);
+            else if ((*r == ',') && (level == 0)) bf_io_input_s0();
+            else if (*r == '[') {
+                if (!ll) {
+                    lc = c;
+                    ll = l;
+                }
+                level++;
+            }
+            else if (*r == ']') {
+                if (level == 0) bf_error_end(l, c);
+                level--;
+            }
+            r++;
+        }
+        if (level != 0) bf_error_loop(ll, lc);
+    } else if (bf->size == 1) {
+        const char *r = bf->icode;
+        uint64_t c = 0;
+        uint64_t l = 1;
+        uint64_t lc = 0;
+        uint64_t ll = 0;
+        uint8_t t = 0;
+        size_t level = 0;
+        while (*r) {
+            if (*r == '\n') {
+                c = 0;
+                l++;
+            } else c++;
+            if (*r == '+') t++;
+            else if (*r == '-') t--;
+            else if (*r == '.') putchar((int)t);
+            else if (*r == ',') bf_io_input_s1(&t);
+            else if (*r == '[') {
+                if (!ll) {
+                    lc = c;
+                    ll = l;
+                }
+                if (t) {
+                    level++;
+                } else {
+                    uint64_t d = 1;
+                    uint64_t sc = c;
+                    uint64_t sl = l;
+                    r++;
+                    while (*r && d) {
+                        if (*r == '[') d++;
+                        else if (*r == ']') d--;
+                        r++;
+                    }
+                    if (!(*r) && d) bf_error_loop(sl, sc);
+                    r--;
+                }
+            }
+            else if (*r == ']') {
+                if (!level) bf_error_end(l, c);
+                if (t) {
+                    uint64_t d = 1;
+                    uint64_t sc = c;
+                    uint64_t sl = l;
+                    r--;
+                    while ((r >= bf->icode) && d) {
+                        if (*r == ']') d++;
+                        else if (*r == '[') d--;
+                        r--;
+                    }
+                    if ((r < bf->icode) && d) bf_error_end(sl, sc);
+                    r++;
+                } else {
+                    level--;
+                }
+            }
+            r++;
+        }
+        if (level != 0) bf_error_loop(ll, lc);
+    } else {
+        const char *r = bf->icode;
+        uint64_t c = 0;
+        uint64_t l = 1;
+        uint64_t lc = 0;
+        uint64_t ll = 0;
+        uint8_t *t = (uint8_t*)calloc(bf->size, 1);
+        if (!t) bf_error_alloc();
+        uint64_t p = bf->size / 2;
+        size_t level = 0;
+        while (*r) {
+            if (*r == '\n') {
+                c = 0;
+                l++;
+            } else c++;
+            if (*r == '+') t++;
+            else if (*r == '-') t--;
+            else if (*r == '>') p=(p+1)%bf->size;
+            else if (*r == '<') p=(p-1)%bf->size;
+            else if ((*r == '.')) putchar((int)t[p]);
+            else if ((*r == ',')) bf_io_input(t, p, bf->size);
+            else if (*r == '[') {
+                if (!ll) {
+                    lc = c;
+                    ll = l;
+                }
+                if (t[p]) {
+                    level++;
+                } else {
+                    uint64_t d = 1;
+                    uint64_t sc = c;
+                    uint64_t sl = l;
+                    r++;
+                    while (*r && d) {
+                        if (*r == '[') d++;
+                        else if (*r == ']') d--;
+                        r++;
+                    }
+                    if (!(*r) && d) bf_error_loop(sl, sc);
+                    r--;
+                }
+            }
+            else if (*r == ']') {
+                if (!level) bf_error_end(l, c);
+                if (t[p]) {
+                    uint64_t d = 1;
+                    uint64_t sc = c;
+                    uint64_t sl = l;
+                    r--;
+                    while ((r >= bf->icode) && d) {
+                        if (*r == ']') d++;
+                        else if (*r == '[') d--;
+                        r--;
+                    }
+                    if ((r < bf->icode) && d) bf_error_end(sl, sc);
+                    r++;
+                } else {
+                    level--;
+                }
+            }
+            r++;
+        }
+        if (level != 0) bf_error_loop(ll, lc);
+    }
 }
 
 void bf_flash(struct brainfuck *bf) {
@@ -327,6 +477,8 @@ void bf_optim(struct brainfuck *bf) {
     if (bf->isize <= 1) return;
     uint64_t c = 0;
     uint64_t l = 1;
+    uint64_t lc = 0;
+    uint64_t ll = 0;
     int64_t level = 0;
     char *w = bf->icode;
     for (const char *r = bf->icode; *r != 0; r++) {
@@ -337,7 +489,13 @@ void bf_optim(struct brainfuck *bf) {
         if (!is_bf(*r)) continue;
         if ((w > bf->icode) && (bf_cancels(*(w - 1), *r))) w--;
         else {
-            if (*r == '[') level++;
+            if (*r == '[') {
+                if (!ll) {
+                    lc = c;
+                    ll = l;
+                }
+                level++;
+            }
             else if (*r == ']') {
                 if (level == 0) bf_error_end(l, c);
                 level--;
@@ -345,9 +503,13 @@ void bf_optim(struct brainfuck *bf) {
             *(w++) = *r;
         }
     }
-    if (level != 0) bf_error_loop(l, c);
+    if (level != 0) bf_error_loop(ll, lc);
     *w = 0;
     bf->isize = w - bf->icode;
+}
+
+void bf_optim_ext(struct brainfuck *bf) {
+    if (bf == 0) bf_error_null();
 }
 
 void bf_compile_start(struct brainfuck *bf) {
@@ -357,7 +519,7 @@ void bf_compile_start(struct brainfuck *bf) {
         bf_append_output_string(bf, "void i(){int c;while((c=getchar())!=EOF&&c!=10);}");
     }
     else if (bf->size == 1) {
-        bf_append_output_string(bf, "static unsigned char t[1];void i(){int c;while((c=getchar())!=EOF&&c!=10);*t=0;}");
+        bf_append_output_string(bf, "static unsigned char t = 0;void i(){int c;while((c=getchar())!=EOF&&c!=10);t=0;}");
     } else {
         bf_append_output_string(bf, "#define s ");
         bf_append_output_int(bf, bf->size);
@@ -375,59 +537,73 @@ void bf_compile_s0(struct brainfuck *bf) {
     if (bf == 0) bf_error_null();
     uint64_t c = 0;
     uint64_t l = 1;
+    uint64_t lc = 0;
+    uint64_t ll = 0;
     int64_t level = 0;
     for (uint64_t i = 0; i < bf->isize; i++) {
         if (bf->icode[i] == '\n') {
             c = 0;
             l++;
         } else c++;
-        if (bf->icode[i] == ',') bf_append_output_string(bf, "i();");
-        else if (bf->icode[i] == '.') bf_append_output_string(bf, "putchar(0);");
-        else if (bf->icode[i] == '[') level++;
+        if ((bf->icode[i] == ',') && (level == 0)) bf_append_output_string(bf, "i();");
+        else if ((bf->icode[i] == '.') && (level == 0)) bf_append_output_string(bf, "putchar(0);");
+        else if (bf->icode[i] == '[') {
+            if (!ll) {
+                lc = c;
+                ll = l;
+            }
+            level++;
+        }
         else if (bf->icode[i] == ']') {
-            if (level == 0) bf_error_end(l, c);;
+            if (level == 0) bf_error_end(l, c);
             level--;
         }
     }
-    if (level != 0) bf_error_loop(l, c);;
+    if (level != 0) bf_error_loop(ll, lc);
 }
 
 void bf_compile_0_s1(struct brainfuck *bf) {
     if (bf == 0) bf_error_null();
     uint64_t c = 0;
     uint64_t l = 1;
+    uint64_t lc = 0;
+    uint64_t ll = 0;
     int64_t level = 0;
     for (uint64_t i = 0; i < bf->isize; i++) {
         if (bf->icode[i] == '\n') {
             c = 0;
             l++;
         } else c++;
-        if (bf->icode[i] == '+') bf_append_output_string(bf, "*t+=1;");
-        else if (bf->icode[i] == '-') bf_append_output_string(bf, "*t-=1;");
+        if (bf->icode[i] == '+') bf_append_output_string(bf, "t+=1;");
+        else if (bf->icode[i] == '-') bf_append_output_string(bf, "t-=1;");
         else if (bf->icode[i] == ',') bf_append_output_string(bf, "i();");
-        else if (bf->icode[i] == '.') bf_append_output_string(bf, "putchar((int)*t);");
+        else if (bf->icode[i] == '.') bf_append_output_string(bf, "putchar((int)t);");
         else if (bf->icode[i] == '[') {
+            if (!ll) {
+                lc = c;
+                ll = l;
+            }
             level++;
-            bf_append_output_string(bf, "while(*t){");
+            bf_append_output_string(bf, "while(t){");
         }
         else if (bf->icode[i] == ']') {
-            if (level == 0) bf_error_end(l, c);;
+            if (level == 0) bf_error_end(l, c);
             level--;
             bf_append_output_string(bf, "}");
         }
     }
-    if (level != 0) bf_error_loop(l, c);;
+    if (level != 0) bf_error_loop(ll, lc);
 }
 
 void bf_compile_1_s1(struct brainfuck *bf) {
     if (bf == 0) bf_error_null();
     bf_optim(bf);
     for (uint64_t i = 0; i < bf->isize; i++) {
-        if (bf->icode[i] == '+') bf_append_output_string(bf, "*t+=1;");
-        else if (bf->icode[i] == '-') bf_append_output_string(bf, "*t-=1;");
+        if (bf->icode[i] == '+') bf_append_output_string(bf, "t+=1;");
+        else if (bf->icode[i] == '-') bf_append_output_string(bf, "t-=1;");
         else if (bf->icode[i] == ',') bf_append_output_string(bf, "i();");
-        else if (bf->icode[i] == '.') bf_append_output_string(bf, "putchar((int)*t);");
-        else if (bf->icode[i] == '[') bf_append_output_string(bf, "while(*t){");
+        else if (bf->icode[i] == '.') bf_append_output_string(bf, "putchar((int)t);");
+        else if (bf->icode[i] == '[') bf_append_output_string(bf, "while(t){");
         else if (bf->icode[i] == ']') bf_append_output_string(bf, "}");
     }
 }
@@ -444,17 +620,17 @@ void bf_compile_2_s1(struct brainfuck *bf) {
             }
             i--;
             if (num > 0) {
-                bf_append_output_string(bf, "*t+=");
+                bf_append_output_string(bf, "t+=");
                 bf_append_output_int(bf, num);
                 bf_append_output_string(bf, ";");
             } else if (num < 0) {
-                bf_append_output_string(bf, "*t-=");
+                bf_append_output_string(bf, "t-=");
                 bf_append_output_int(bf, -num);
                 bf_append_output_string(bf, ";");
             }
         }
         else if (bf->icode[i] == ',') bf_append_output_string(bf, "i();");
-        else if (bf->icode[i] == '.') bf_append_output_string(bf, "putchar((int)*t);");
+        else if (bf->icode[i] == '.') bf_append_output_string(bf, "putchar((int)t);");
         else if (bf->icode[i] == '[') {
             if (((i + 2) < bf->isize) && (((bf->icode[i + 1] == '-') || (bf->icode[i + 1] == '+')) && (bf->icode[i + 2] == ']'))) {
                 while (((i + 2) < bf->isize) && ((bf->icode[i] == '[') && ((bf->icode[i + 1] == '-') || (bf->icode[i + 1] == '+')) && (bf->icode[i + 2] == ']'))) i += 3;
@@ -463,7 +639,7 @@ void bf_compile_2_s1(struct brainfuck *bf) {
                     if (bf->icode[i] == '+') num++;
                     else num--;
                 }
-                bf_append_output_string(bf, "*t=");
+                bf_append_output_string(bf, "t=");
                 bf_append_output_int(bf, num);
                 bf_append_output_string(bf, ";");
                 i--;
@@ -477,6 +653,8 @@ void bf_compile_0(struct brainfuck *bf) {
     if (bf == 0) bf_error_null();
     uint64_t c = 0;
     uint64_t l = 1;
+    uint64_t lc = 0;
+    uint64_t ll = 0;
     int64_t level = 0;
     for (uint64_t i = 0; i < bf->isize; i++) {
         if (bf->icode[i] == '\n') {
@@ -490,16 +668,20 @@ void bf_compile_0(struct brainfuck *bf) {
         else if (bf->icode[i] == ',') bf_append_output_string(bf, "i();");
         else if (bf->icode[i] == '.') bf_append_output_string(bf, "putchar((int)t[p]);");
         else if (bf->icode[i] == '[') {
+            if (!ll) {
+                lc = c;
+                ll = l;
+            }
             level++;
             bf_append_output_string(bf, "while(t[p]){");
         }
         else if (bf->icode[i] == ']') {
-            if (level == 0) bf_error_end(l, c);;
+            if (level == 0) bf_error_end(l, c);
             level--;
             bf_append_output_string(bf, "}");
         }
     }
-    if (level != 0) bf_error_loop(l, c);;
+    if (level != 0) bf_error_loop(ll, lc);
 }
 
 void bf_compile_1(struct brainfuck *bf) {
