@@ -458,16 +458,14 @@ void bf_compile_2_s1(struct brainfuck *bf) {
         else if (bf->icode[i] == '[') {
             if (((i + 2) < bf->isize) && (((bf->icode[i + 1] == '-') || (bf->icode[i + 1] == '+')) && (bf->icode[i + 2] == ']'))) {
                 while (((i + 2) < bf->isize) && ((bf->icode[i] == '[') && ((bf->icode[i + 1] == '-') || (bf->icode[i + 1] == '+')) && (bf->icode[i + 2] == ']'))) i += 3;
-                if ((i < bf->isize) && ((bf->icode[i] == '+') || (bf->icode[i] == '-'))) {
-                    uint8_t num = 0;
-                    for (; (i < bf->isize) && ((bf->icode[i] == '+') || (bf->icode[i] == '-')); i++) {
-                        if (bf->icode[i] == '+') num++;
-                        else num--;
-                    }
-                    bf_append_output_string(bf, "*t=");
-                    bf_append_output_int(bf, num);
-                    bf_append_output_string(bf, ";");
+                uint8_t num = 0;
+                for (; (i < bf->isize) && ((bf->icode[i] == '+') || (bf->icode[i] == '-')); i++) {
+                    if (bf->icode[i] == '+') num++;
+                    else num--;
                 }
+                bf_append_output_string(bf, "*t=");
+                bf_append_output_int(bf, num);
+                bf_append_output_string(bf, ";");
                 i--;
             }
         }
@@ -562,16 +560,14 @@ void bf_compile_2(struct brainfuck *bf) {
         else if (bf->icode[i] == '[') {
             if (((i + 2) < bf->isize) && (((bf->icode[i + 1] == '-') || (bf->icode[i + 1] == '+')) && (bf->icode[i + 2] == ']'))) {
                 while (((i + 2) < bf->isize) && ((bf->icode[i] == '[') && ((bf->icode[i + 1] == '-') || (bf->icode[i + 1] == '+')) && (bf->icode[i + 2] == ']'))) i += 3;
-                if ((i < bf->isize) && ((bf->icode[i] == '+') || (bf->icode[i] == '-'))) {
-                    uint8_t num = 0;
-                    for (; (i < bf->isize) && ((bf->icode[i] == '+') || (bf->icode[i] == '-')); i++) {
-                        if (bf->icode[i] == '+') num++;
-                        else num--;
-                    }
-                    bf_append_output_string(bf, "t[p]=");
-                    bf_append_output_int(bf, num);
-                    bf_append_output_string(bf, ";");
+                uint8_t num = 0;
+                for (; (i < bf->isize) && ((bf->icode[i] == '+') || (bf->icode[i] == '-')); i++) {
+                    if (bf->icode[i] == '+') num++;
+                    else num--;
                 }
+                bf_append_output_string(bf, "t[p]=");
+                bf_append_output_int(bf, num);
+                bf_append_output_string(bf, ";");
                 i--;
             } else bf_append_output_string(bf, "while(t[p]){");
         }
@@ -622,16 +618,14 @@ void bf_compile_3(struct brainfuck *bf) {
         else if (bf->icode[i] == '[') {
             if (((i + 2) < bf->isize) && (((bf->icode[i + 1] == '-') || (bf->icode[i + 1] == '+')) && (bf->icode[i + 2] == ']'))) {
                 while (((i + 2) < bf->isize) && ((bf->icode[i] == '[') && ((bf->icode[i + 1] == '-') || (bf->icode[i + 1] == '+')) && (bf->icode[i + 2] == ']'))) i += 3;
-                if ((i < bf->isize) && ((bf->icode[i] == '+') || (bf->icode[i] == '-'))) {
-                    uint8_t num = 0;
-                    for (; (i < bf->isize) && ((bf->icode[i] == '+') || (bf->icode[i] == '-')); i++) {
-                        if (bf->icode[i] == '+') num++;
-                        else num--;
-                    }
-                    bf_append_output_string(bf, "t[p]=");
-                    bf_append_output_int(bf, num);
-                    bf_append_output_string(bf, ";");
+                uint8_t num = 0;
+                for (; (i < bf->isize) && ((bf->icode[i] == '+') || (bf->icode[i] == '-')); i++) {
+                    if (bf->icode[i] == '+') num++;
+                    else num--;
                 }
+                bf_append_output_string(bf, "t[p]=");
+                bf_append_output_int(bf, num);
+                bf_append_output_string(bf, ";");
                 i--;
             } else bf_append_output_string(bf, "while(t[p]){");
         }
@@ -661,11 +655,11 @@ void bf_compile(struct brainfuck *bf) {
 
 bool arg_is_input(char *arg) {
     return (
-        (strcmp(arg, "--") == 0) ||
         (strcmp(arg, "-f") == 0) ||
         (strcmp(arg, "-file") == 0) ||
         (strcmp(arg, "-i") == 0) ||
-        (strcmp(arg, "-input") == 0)
+        (strcmp(arg, "-input") == 0) ||
+        (strcmp(arg, "-input-file") == 0)
     );
 }
 
@@ -673,6 +667,13 @@ bool arg_is_output(char *arg) {
     return (
         (strcmp(arg, "-o") == 0) ||
         (strcmp(arg, "-output") == 0)
+    );
+}
+
+bool arg_is_output_string(char *arg) {
+    return (
+        (strcmp(arg, "-os") == 0) ||
+        (strcmp(arg, "-output-string") == 0)
     );
 }
 
@@ -697,10 +698,9 @@ bool arg_is_size(char *arg) {
 
 bool arg_is_optim(char *arg) {
     return (
-        (strcmp(arg, "-optim") == 0) ||
-        (strcmp(arg, "-level") == 0) ||
-        (strcmp(arg, "-optim-level") == 0) ||
-        (strcmp(arg, "-level-optim") == 0)
+        (strcmp(arg, "-lo") == 0) ||
+        (strcmp(arg, "-level-optim") == 0) ||
+        (strcmp(arg, "-optim") == 0)
     );
 }
 
@@ -714,9 +714,7 @@ bool arg_is_run(char *arg) {
 bool arg_is_onlyrun(char *arg) {
     return (
         (strcmp(arg, "-ro") == 0) ||
-        (strcmp(arg, "-or") == 0) ||
-        (strcmp(arg, "-run-only") == 0) ||
-        (strcmp(arg, "-only-run") == 0)
+        (strcmp(arg, "-run-only") == 0)
     );
 }
 
@@ -739,6 +737,9 @@ size_t args_parse(struct brainfuck *bf, int argc, char **argv) {
                 if (arg_is_string(argv[i])) bf_append_input_string(bf, argv[i]);
                 else bf_append_input_file(bf, argv[i]);
             }
+        }
+        else if (arg_is_output_string(argv[i])) {
+            bf_add_output_string(bf);
         }
         else if (arg_is_output(argv[i])) {
             if ((i + 1) < argc) {
@@ -789,7 +790,7 @@ size_t args_parse(struct brainfuck *bf, int argc, char **argv) {
 }
 
 void print_help(const char *name_program) {
-    printf("\nusage %s:\n  (...) = files\n  (-h, -help) = + 1 print help (this text)\n  (--, -f, -file, -i, -input)[1 or 2 with (-s)] = file or string appended in global code, default or null = (-s \"\")\n  (-o, -output)[1 or 2 with (-s)] = + 1 output file or + 1 echo result code, default or null = (-s \"\")\n  (-, -s, -str, -string)[1] = string appended in global code, default or null = \"\"\n  (-c, -cells, -count, -count-cells)[1] = count cells in brainfuck take memory, default = 30000, null = 0\n  (-r, -run) = run code after compilation, \n  (-ro, -or, -run-only, -only-run) = only run code, no result files compilation and no print result compilation\n  (-optim, -level, -optim-level, -level-optim)[1] = level optimization 0..3 if -optim > 3 then -optim = 3, default = 2, null = 0\n\nbrainfuck rule:\n  '+' memory[cell] = memory[cell] + 1\n  '-' memory[cell] = memory[cell] - 1\n  '>' cell = cell + 1, if cell > -count-cells then cell = cell - -count-cells\n  '<' if cell = 0 then cell = -count-cells, if not cell = cell - 1\n  '.' print ascii character from memory[cell]\n  ',' get text from user and save to memory range memory[cell]..memory[cell + size-text]\n  '[' if memory[cell] = 0 then move to character following the nearest ']' character, if not move to next character\n  ']' if memory[cell] = 0 then move to next character, if not then we go back to the nearest front character of the character '['\n\nlevel optimization:\n\n level 0:\n  no optimization, raw command, from brainfuck rule\n\n level 1:\n  '++++--' = '++'\n  '><<<><<' = '<<<'\n\n level 2:\n  '++++' memory[cell] = memory[cell] + 4\n  '---' memory[cell] = memory[cell] - 3\n  '>>' cell = cell + 2\n  '<<<<<' cell = cell - 5\n  (\"[-]\" or \"[+]\" or \"[-][-][+]\") memory[cell] = 0\n  \"[-]+++\" memory[cell] = 3\n\n  level 3:\n  \"[->+>++<<<->]\"\n  memory[cell + 1] = memory[cell + 1] + memory[cell]\n  memory[cell + 2] = memory[cell + 2] + (memory[cell] * 2)\n  memory[cell - 1] = memory[cell - 1] - memory[cell], memory[cell] = 0\n", name_program);
+    printf("\nusage %s:\n  (...) = files\n  (-h, -help) = + 1 print help (this text)\n  (-f, -file, -i, -input, -input-file)[1 or 2 with (-s)] = file or string appended in global code, default or null = (-s \"\")\n  (-o, -output)[1 or 2 with (-s)] = + 1 output file or + 1 echo result code, default or null = (-s \"\")\n  (-, -s, -str, -string)[1] = string appended in global code, default or null = \"\"\n  (-os, -output-string) = -o -s\n  (-c, -cells, -count, -count-cells, -n)[1] = count cells in brainfuck take memory, default = 30000, null = 0\n  (-r, -run) = run code after compilation, \n  (-ro, -run-only) = only run code, no result files compilation and no print result compilation\n  (-lo, -level-optim, -optim)[1] = level optimization 0..3 if -optim > 3 then -optim = 3, default = 2, null = 0\n\nbrainfuck rule:\n  '+' memory[cell] = memory[cell] + 1\n  '-' memory[cell] = memory[cell] - 1\n  '>' cell = cell + 1, if cell > -count-cells then cell = cell - -count-cells\n  '<' if cell = 0 then cell = -count-cells, if not cell = cell - 1\n  '.' print ascii character from memory[cell]\n  ',' get text from user and save to memory range memory[cell]..memory[cell + size-text]\n  '[' if memory[cell] = 0 then move to character following the nearest ']' character, if not move to next character\n  ']' if memory[cell] = 0 then move to next character, if not then we go back to the nearest front character of the character '['\n\nlevel optimization:\n\n level 0:\n  no optimization, raw command, from brainfuck rule\n\n level 1:\n  '++++--' = '++'\n  '><<<><<' = '<<<'\n\n level 2:\n  '++++' memory[cell] = memory[cell] + 4\n  '---' memory[cell] = memory[cell] - 3\n  '>>' cell = cell + 2\n  '<<<<<' cell = cell - 5\n  (\"[-]\" or \"[+]\" or \"[-][-][+]\") memory[cell] = 0\n  \"[-]+++\" memory[cell] = 3\n\n  level 3:\n  \"[->+>++<<<->]\"\n  memory[cell + 1] = memory[cell + 1] + memory[cell]\n  memory[cell + 2] = memory[cell + 2] + (memory[cell] * 2)\n  memory[cell - 1] = memory[cell - 1] - memory[cell], memory[cell] = 0\n", name_program);
 }
 
 int main(int argc, char **argv) {
